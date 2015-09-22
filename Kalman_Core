@@ -1,0 +1,51 @@
+% state: statehat = F * statehat + var_state
+% measurement: yhat = G * statehat + var_measure
+
+function [statehat, var_statehat, pred_statehat, C, LL]...
+    = unikalmancore(y,G,F,var_measure,statehat,var_state,var_statehat)
+
+% Core component of the Univariate Kalman Filter
+% Copyright Jue Wang 2015 
+
+    LL=0;
+    
+    % predict states t+1|t
+    statehat = F * statehat;
+    
+    % capture statehat and var_statehat for RTS smoother
+    pred_statehat = statehat(end);
+    pred_var_statehat = var_statehat(end);
+    
+    % predict state variances t+1|t
+    var_statehat = F * var_statehat * F' + var_state;
+    
+    % smoother covariance
+    C = pred_var_statehat * F(end) / var_statehat(end);
+    
+    % for each t, first loop over 3 meansurement equations
+    for i=1:length(y)
+        
+        %state transition vector (differs for each i) * state vector
+        yhat = G(i,:) * statehat;
+        
+        %calculate error for each i (scalar)
+        I = y(i) - yhat;
+        
+        %calculate measurement variance (scalar)
+        var_yhat = G(i,:) * var_statehat * G(i,:)' + var_measure(i);
+        
+        %Kalman Gain
+        K = var_statehat * G(i,:)' * (var_yhat)^-1;
+
+        %update states i+1|i (t|t)
+        statehat = statehat + K * I;
+        
+        %update state variances i+1|i (t|t)
+        var_statehat = (eye(length(statehat)) - K * G(i,:)) * var_statehat;
+
+        LL = LL + log(var_yhat) + I^2 * (var_yhat)^-1;
+
+    end
+
+%move on to the next t
+end

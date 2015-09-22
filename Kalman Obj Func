@@ -1,0 +1,52 @@
+% state: statehat = F * statehat + var_state
+% measurement: yhat = G * statehat + var_measure
+
+function [sumLL, statehatout, pred_statehatout, Cout, theta, F, ...
+    var_measure, sigma_h] = unikalmanobj(param,data,initstate,initstatevar)
+
+% Objective function for the Univariate Kalman Filter
+% Copyright Jue Wang 2015 
+
+m = size(initstate);
+n = size(data);
+
+%state to measurement
+G = [param(3:5) ones(3,1)];
+theta = exp(0.5*(param(3:5)+1.2704));
+
+%measurement error vector
+var_measure = ones(size(data,2),1)*pi^2/2; 
+
+%state transition matrix
+F = eye(m(1));
+F(4) = param(1);    
+
+%state error
+var_state = zeros(m(1));
+var_state(end) = exp(param(2));
+sigma_h = sqrt(exp(param(2)));
+
+%load initial states and state variances for the Kalman Filter
+statehat = initstate;
+var_statehat = initstatevar;
+
+%loop over time and calculate the likelihood
+statehatout = zeros(n(1),m(1));
+pred_statehatout = zeros(n(1),1);
+Cout = zeros(n(1),1);
+
+sumLL = 0;
+    for t = 1:n(1);
+        y = data(t,:)';
+        [statehat, var_statehat, pred_statehat, C, LL]...
+            = unikalmancore(y,G,F,var_measure,statehat,var_state,var_statehat);
+        sumLL = sumLL+0.5*LL;
+        statehatout(t,:) = statehat';
+        pred_statehatout(t) = pred_statehat;
+        Cout(t) = C;
+    end
+
+end
+
+
+

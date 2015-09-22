@@ -1,0 +1,43 @@
+clear;
+clc;
+
+%tranform y and load data
+loadfile = input('simout_t or simout_n?  ','s');
+load(loadfile);
+data = log(Rrec.^2);
+
+%set initial guesses
+phi = 0.95;
+sigma_h = 0.1;
+theta = [0.3 0.5 0.7];
+x0 = [phi;log(sigma_h^2);log(theta(:).^2)-1.2704];
+
+%param = x0;   %for debugging
+
+%initialise Kalman filter - diffuse
+initstate=[1;0];
+initstatevar=[0 0; 0 1e5];
+
+%set optimisation options
+options = optimoptions('fminunc','Display','iter','MaxFunEvals',500000,...
+    'MaxIter',5000,'algorithm','quasi-newton');
+
+%% Univariate Kalman filter
+%---------estimation----------------------------------------------
+[paramest,fval,exitflag]=fminunc(@(param) unikalmanobj(param,data,...
+    initstate,initstatevar),x0,options);
+
+%---------Filtering-----------------------------------------------
+[sumLL, statehatout, pred_statehatout, Cout, thetaout, F, ~ , sigma_hout]...
+    = unikalmanobj(paramest,data,initstate,initstatevar);
+
+%---------Smoothing------------------------------------------------
+[smooth] = kalmansmooth(initstate,statehatout,pred_statehatout,Cout);
+
+
+%% Plots
+plot(hrec(100:end),'g')
+hold on
+plot(statehatout(100:end,2))
+plot(smooth(100:end),'m','linewidth',1);
+title('KF and RTS Smoother - n-dist','fontsize',10)

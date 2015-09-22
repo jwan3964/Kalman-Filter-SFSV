@@ -1,0 +1,54 @@
+clear;
+close all;
+clc;
+
+% set seed for replicability
+rng(5);
+
+% parameters
+errordist = input('error distribution = n or t?  ','s');
+  
+if errordist == 't'
+   nu = input('degrees of freedom = ');
+end
+    
+phi = 0.95;
+sigma_h = 0.1;
+theta = [0.3 0.5 0.7];
+
+% initialize
+h0 = normrnd(0,sigma_h^2/(1-phi^2));  %unconditional distribution
+h_t = h0;
+hrec = [];
+volrec = [];
+Rrec = [];
+
+for t = 1:2000
+    
+    h_t = phi * h_t + normrnd(0,sigma_h);
+    vol_t = exp(0.5 * h_t);
+    
+    switch errordist
+        case 'n'
+            Rerror_t = theta .* mvnrnd(zeros(3,1),eye(3));% gaussian errors
+        case 't'
+            Rerror_t = theta .* mvtrnd(eye(3),nu);       % student-t errors
+    end
+    
+    R_t = vol_t * Rerror_t;
+    hrec = [hrec; h_t];
+    volrec = [volrec; vol_t];
+    Rrec = [Rrec; R_t];
+end
+    
+% Plots
+figure
+subplot(3,1,1)
+plot(hrec)
+title('h_t')
+subplot(3,1,2)
+plot(volrec)
+title('\sigma_t')
+subplot(3,1,3)
+plot(Rrec)
+title('R_t')
